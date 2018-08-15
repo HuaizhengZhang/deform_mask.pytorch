@@ -29,6 +29,7 @@ if torch.cuda.is_available():
 
     extra_objects = ['src/deform_roi_kernel.cu.o']
     extra_objects = [os.path.join(this_file, fname) for fname in extra_objects]
+    extra_compile_args = ['-std=c99']
 
 ffi = create_extension(
     '_ext.deform_roi',
@@ -37,7 +38,8 @@ ffi = create_extension(
     define_macros=defines,
     relative_to=__file__,
     with_cuda=with_cuda,
-    extra_objects=extra_objects
+    extra_objects=extra_objects,
+    extra_compile_args=extra_compile_args
 )
 
 if __name__ == '__main__':
