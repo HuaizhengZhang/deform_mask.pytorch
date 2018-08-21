@@ -42,7 +42,8 @@ class vgg16(_fasterRCNN):
 
         # Fix the layers before conv3:
         for layer in range(10):
-            for p in self.RCNN_base[layer].parameters(): p.requires_grad = False
+            for p in self.RCNN_base[layer].parameters():
+                p.requires_grad = False
 
         # self.RCNN_base = _RCNN_base(vgg.features, self.classes, self.dout_base_model)
 

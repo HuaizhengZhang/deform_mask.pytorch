@@ -155,6 +155,10 @@ class _fasterRCNN(nn.Module):
         normal_init(self.RCNN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.RCNN_bbox_pred, 0, 0.001, cfg.TRAIN.TRUNCATED)
 
+    #     TODO deform layer learning rate * 0.1
+        self.deform_fc.weight.data.zero_()
+        self.deform_fc.bias.data.zero_()
+
     def create_architecture(self):
         self._init_modules()
         self._init_weights()
