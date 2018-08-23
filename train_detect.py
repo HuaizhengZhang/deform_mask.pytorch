@@ -37,7 +37,7 @@ from model.utils.net_utils import weights_normal_init, save_net, load_net, \
     adjust_learning_rate, save_checkpoint, clip_gradient
 
 from nets.vgg16_deform import vgg16
-from model.faster_rcnn.resnet import resnet
+from nets.res101_deform import resnet
 
 
 def parse_args():
@@ -50,7 +50,7 @@ def parse_args():
                         default='pascal_voc', type=str)
     parser.add_argument('--net', dest='net',
                         help='vgg16, res101',
-                        default='vgg16_deform', type=str)
+                        default='res101_deform', type=str)
     parser.add_argument('--start_epoch', dest='start_epoch',
                         help='starting epoch',
                         default=1, type=int)
@@ -117,7 +117,7 @@ def parse_args():
                         default=1, type=int)
     parser.add_argument('--checkpoint', dest='checkpoint',
                         help='checkpoint to load model',
-                        default=0, type=int)
+                        default=2504, type=int)
     # log and diaplay
     parser.add_argument('--use_tfboard', dest='use_tfboard',
                         help='whether use tensorflow tensorboard',
@@ -250,7 +250,7 @@ if __name__ == '__main__':
     # initilize the network here.
     if args.net == 'vgg16_deform':
         fasterRCNN = vgg16(imdb.classes, pretrained=True, class_agnostic=args.class_agnostic)
-    elif args.net == 'res101':
+    elif args.net == 'res101_deform':
         fasterRCNN = resnet(imdb.classes, 101, pretrained=True, class_agnostic=args.class_agnostic)
     elif args.net == 'res50':
         fasterRCNN = resnet(imdb.classes, 50, pretrained=True, class_agnostic=args.class_agnostic)
@@ -337,7 +337,7 @@ if __name__ == '__main__':
 
             loss = rpn_loss_cls.mean() + rpn_loss_box.mean() \
                    + RCNN_loss_cls.mean() + RCNN_loss_bbox.mean()
-            loss_temp += loss.data[0]
+            loss_temp += loss.item()
 
             # backward
             optimizer.zero_grad()
@@ -359,10 +359,10 @@ if __name__ == '__main__':
                     fg_cnt = torch.sum(rois_label.data.ne(0))
                     bg_cnt = rois_label.data.numel() - fg_cnt
                 else:
-                    loss_rpn_cls = rpn_loss_cls.data[0]
-                    loss_rpn_box = rpn_loss_box.data[0]
-                    loss_rcnn_cls = RCNN_loss_cls.data[0]
-                    loss_rcnn_box = RCNN_loss_bbox.data[0]
+                    loss_rpn_cls = rpn_loss_cls.item()
+                    loss_rpn_box = rpn_loss_box.item()
+                    loss_rcnn_cls = RCNN_loss_cls.item()
+                    loss_rcnn_box = RCNN_loss_bbox.item()
                     fg_cnt = torch.sum(rois_label.data.ne(0))
                     bg_cnt = rois_label.data.numel() - fg_cnt
 

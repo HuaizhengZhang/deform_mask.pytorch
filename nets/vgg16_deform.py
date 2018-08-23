@@ -15,7 +15,7 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 import math
 import torchvision.models as models
-from nets.faster_rcnn_deform import _fasterRCNN
+from nets.faster_rcnn_deform_vgg16 import _fasterRCNN
 import pdb
 
 
