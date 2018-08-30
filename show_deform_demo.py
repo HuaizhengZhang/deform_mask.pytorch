@@ -57,13 +57,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
     parser.add_argument('--dataset', dest='dataset',
                         help='training dataset',
-                        default='pascal_voc_0712', type=str)
+                        default='pascal_voc', type=str)
     parser.add_argument('--cfg', dest='cfg_file',
                         help='optional config file',
                         default='cfgs/vgg16_deform.yml', type=str)
     parser.add_argument('--net', dest='net',
                         help='vgg16_deform, res50, res101, res152',
-                        default='res101_deform', type=str)
+                        default='vgg16_deform', type=str)
     parser.add_argument('--set', dest='set_cfgs',
                         help='set config keys', default=None,
                         nargs=argparse.REMAINDER)
@@ -87,13 +87,13 @@ def parse_args():
                         default=0, type=int)
     parser.add_argument('--checksession', dest='checksession',
                         help='checksession to load model',
-                        default=1, type=int)
+                        default=4, type=int)
     parser.add_argument('--checkepoch', dest='checkepoch',
                         help='checkepoch to load network',
-                        default=13, type=int)
+                        default=9, type=int)
     parser.add_argument('--checkpoint', dest='checkpoint',
                         help='checkpoint to load network',
-                        default=8274, type=int)
+                        default=2504, type=int)
     parser.add_argument('--bs', dest='batch_size',
                         help='batch_size',
                         default=1, type=int)

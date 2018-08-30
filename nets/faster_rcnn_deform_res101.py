@@ -106,6 +106,7 @@ class _fasterRCNN(nn.Module):
             offset_t, _ = self.RCNN_deform_roi_pool_1(new_base_feat, rois.view(-1, 5))
             offset = self.deform_fc(offset_t.view(offset_t.size(0), -1))
             offset_reshape = offset.view(-1, 2, 7, 7)
+            print(offset_reshape)
             pooled_feat, _ = self.RCNN_deform_roi_pool_2(new_base_feat, rois.view(-1, 5), offset_reshape)
 
 
@@ -160,7 +161,7 @@ class _fasterRCNN(nn.Module):
         normal_init(self.RCNN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.RCNN_bbox_pred, 0, 0.001, cfg.TRAIN.TRUNCATED)
 
-    #     TODO deform layer learning rate * 0.1
+    #     TODO deform layer learning rate * 0.01
         self.deform_fc.weight.data.zero_()
         self.deform_fc.bias.data.zero_()
     #     Resnet new con

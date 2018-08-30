@@ -135,7 +135,8 @@ class _fasterRCNN(nn.Module):
         cls_prob = cls_prob.view(batch_size, rois.size(1), -1)
         bbox_pred = bbox_pred.view(batch_size, rois.size(1), -1)
 
-        return rois, cls_prob, bbox_pred, rpn_loss_cls, rpn_loss_bbox, RCNN_loss_cls, RCNN_loss_bbox, rois_label
+        return rois, cls_prob, bbox_pred, rpn_loss_cls, rpn_loss_bbox, \
+               RCNN_loss_cls, RCNN_loss_bbox, rois_label, offset_reshape
 
     def _init_weights(self):
         def normal_init(m, mean, stddev, truncated=False):
@@ -155,7 +156,7 @@ class _fasterRCNN(nn.Module):
         normal_init(self.RCNN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.RCNN_bbox_pred, 0, 0.001, cfg.TRAIN.TRUNCATED)
 
-    #     TODO deform layer learning rate * 0.1
+    #     TODO deform layer learning rate * 0.01
         self.deform_fc.weight.data.zero_()
         self.deform_fc.bias.data.zero_()
 
