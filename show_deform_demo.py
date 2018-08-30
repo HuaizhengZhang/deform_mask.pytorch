@@ -40,6 +40,7 @@ from model.utils.net_utils import save_net, load_net, vis_detections
 from model.utils.blob import im_list_to_blob
 
 from nets.vgg16_deform import vgg16
+from nets.res101_deform import resnet
 
 import pdb
 
@@ -56,13 +57,13 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
     parser.add_argument('--dataset', dest='dataset',
                         help='training dataset',
-                        default='pascal_voc', type=str)
+                        default='pascal_voc_0712', type=str)
     parser.add_argument('--cfg', dest='cfg_file',
                         help='optional config file',
                         default='cfgs/vgg16_deform.yml', type=str)
     parser.add_argument('--net', dest='net',
                         help='vgg16_deform, res50, res101, res152',
-                        default='vgg16_deform', type=str)
+                        default='res101_deform', type=str)
     parser.add_argument('--set', dest='set_cfgs',
                         help='set config keys', default=None,
                         nargs=argparse.REMAINDER)
@@ -89,10 +90,10 @@ def parse_args():
                         default=1, type=int)
     parser.add_argument('--checkepoch', dest='checkepoch',
                         help='checkepoch to load network',
-                        default=1, type=int)
+                        default=13, type=int)
     parser.add_argument('--checkpoint', dest='checkpoint',
                         help='checkpoint to load network',
-                        default=2504, type=int)
+                        default=8274, type=int)
     parser.add_argument('--bs', dest='batch_size',
                         help='batch_size',
                         default=1, type=int)
@@ -184,7 +185,7 @@ if __name__ == '__main__':
     # initilize the network here.
     if args.net == 'vgg16_deform':
         fasterRCNN = vgg16(pascal_classes, pretrained=False, class_agnostic=args.class_agnostic)
-    elif args.net == 'res101':
+    elif args.net == 'res101_deform':
         fasterRCNN = resnet(pascal_classes, 101, pretrained=False, class_agnostic=args.class_agnostic)
     elif args.net == 'res50':
         fasterRCNN = resnet(pascal_classes, 50, pretrained=False, class_agnostic=args.class_agnostic)
@@ -296,7 +297,7 @@ if __name__ == '__main__':
         rois, cls_prob, bbox_pred, \
         rpn_loss_cls, rpn_loss_box, \
         RCNN_loss_cls, RCNN_loss_bbox, \
-        rois_label = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
+        rois_label, offset_reshape = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
 
         scores = cls_prob.data
         boxes = rois.data[:, :, 1:5]
