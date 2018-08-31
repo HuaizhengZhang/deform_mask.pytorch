@@ -25,8 +25,10 @@ import time
 import pdb
 from model.utils.net_utils import _smooth_l1_loss, _crop_pool_layer, _affine_grid_gen, _affine_theta
 
+
 class _fasterRCNN(nn.Module):
     """ faster RCNN """
+
     def __init__(self, classes, class_agnostic):
         super(_fasterRCNN, self).__init__()
         self.classes = classes
@@ -39,14 +41,14 @@ class _fasterRCNN(nn.Module):
         # define rpn
         self.RCNN_rpn = _RPN(self.dout_base_model)
         self.RCNN_proposal_target = _ProposalTargetLayer(self.n_classes)
-        self.RCNN_roi_pool = _RoIPooling(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0/16.0)
-        self.RCNN_roi_align = RoIAlignAvg(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0/16.0)
-        self.RCNN_deform_roi_pool_1 = DeformRoIFunction(pool_height=7, pool_width=7, spatial_scale=1.0/16.0,
+        self.RCNN_roi_pool = _RoIPooling(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0 / 16.0)
+        self.RCNN_roi_align = RoIAlignAvg(cfg.POOLING_SIZE, cfg.POOLING_SIZE, 1.0 / 16.0)
+        self.RCNN_deform_roi_pool_1 = DeformRoIFunction(pool_height=7, pool_width=7, spatial_scale=1.0 / 16.0,
                                                         no_trans=True, trans_std=0.1,
                                                         sample_per_part=4,
                                                         output_dim=256,
                                                         group_size=1, part_size=7)
-        self.RCNN_deform_roi_pool_2 = DeformRoIFunction(pool_height=7, pool_width=7, spatial_scale=1.0/16.0,
+        self.RCNN_deform_roi_pool_2 = DeformRoIFunction(pool_height=7, pool_width=7, spatial_scale=1.0 / 16.0,
                                                         no_trans=False, trans_std=0.1,
                                                         sample_per_part=4,
                                                         output_dim=256,
@@ -91,24 +93,22 @@ class _fasterRCNN(nn.Module):
             # pdb.set_trace()
             # pooled_feat_anchor = _crop_pool_layer(base_feat, rois.view(-1, 5))
             grid_xy = _affine_grid_gen(rois.view(-1, 5), base_feat.size()[2:], self.grid_size)
-            grid_yx = torch.stack([grid_xy.data[:,:,:,1], grid_xy.data[:,:,:,0]], 3).contiguous()
+            grid_yx = torch.stack([grid_xy.data[:, :, :, 1], grid_xy.data[:, :, :, 0]], 3).contiguous()
             pooled_feat = self.RCNN_roi_crop(base_feat, Variable(grid_yx).detach())
             if cfg.CROP_RESIZE_WITH_MAX_POOL:
                 pooled_feat = F.max_pool2d(pooled_feat, 2, 2)
         elif cfg.POOLING_MODE == 'align':
             pooled_feat = self.RCNN_roi_align(base_feat, rois.view(-1, 5))
         elif cfg.POOLING_MODE == 'pool':
-            pooled_feat = self.RCNN_roi_pool(base_feat, rois.view(-1,5))
+            pooled_feat = self.RCNN_roi_pool(base_feat, rois.view(-1, 5))
         elif cfg.POOLING_MODE == 'deform':
-
             # only resnet101 using new base
             new_base_feat = self.new_conv(base_feat)
-            offset_t, _ = self.RCNN_deform_roi_pool_1(new_base_feat, rois.view(-1, 5))
+            offset_t = self.RCNN_deform_roi_pool_1(new_base_feat, rois.view(-1, 5))
             offset = self.deform_fc(offset_t.view(offset_t.size(0), -1))
             offset_reshape = offset.view(-1, 2, 7, 7)
-            print(offset_reshape)
-            pooled_feat, _ = self.RCNN_deform_roi_pool_2(new_base_feat, rois.view(-1, 5), offset_reshape)
-
+            # print(offset_reshape)
+            pooled_feat = self.RCNN_deform_roi_pool_2(new_base_feat, rois.view(-1, 5), offset_reshape)
 
         # feed pooled features to top model
         pooled_feat = self._head_to_tail(pooled_feat)
@@ -118,7 +118,8 @@ class _fasterRCNN(nn.Module):
         if self.training and not self.class_agnostic:
             # select the corresponding columns according to roi labels
             bbox_pred_view = bbox_pred.view(bbox_pred.size(0), int(bbox_pred.size(1) / 4), 4)
-            bbox_pred_select = torch.gather(bbox_pred_view, 1, rois_label.view(rois_label.size(0), 1, 1).expand(rois_label.size(0), 1, 4))
+            bbox_pred_select = torch.gather(bbox_pred_view, 1,
+                                            rois_label.view(rois_label.size(0), 1, 1).expand(rois_label.size(0), 1, 4))
             bbox_pred = bbox_pred_select.squeeze(1)
 
         # compute object classification probability
@@ -135,7 +136,6 @@ class _fasterRCNN(nn.Module):
             # bounding box regression L1 loss
             RCNN_loss_bbox = _smooth_l1_loss(bbox_pred, rois_target, rois_inside_ws, rois_outside_ws)
 
-
         cls_prob = cls_prob.view(batch_size, rois.size(1), -1)
         bbox_pred = bbox_pred.view(batch_size, rois.size(1), -1)
 
@@ -150,7 +150,7 @@ class _fasterRCNN(nn.Module):
             """
             # x is a parameter
             if truncated:
-                m.weight.data.normal_().fmod_(2).mul_(stddev).add_(mean) # not a perfect approximation
+                m.weight.data.normal_().fmod_(2).mul_(stddev).add_(mean)  # not a perfect approximation
             else:
                 m.weight.data.normal_(mean, stddev)
                 m.bias.data.zero_()
@@ -161,10 +161,10 @@ class _fasterRCNN(nn.Module):
         normal_init(self.RCNN_cls_score, 0, 0.01, cfg.TRAIN.TRUNCATED)
         normal_init(self.RCNN_bbox_pred, 0, 0.001, cfg.TRAIN.TRUNCATED)
 
-    #     TODO deform layer learning rate * 0.01
-        self.deform_fc.weight.data.zero_()
-        self.deform_fc.bias.data.zero_()
-    #     Resnet new con
+        #     TODO deform layer learning rate * 0.01
+        # self.deform_fc.weight.data.zero_()
+        # self.deform_fc.bias.data.zero_()
+        #     Resnet new con
         normal_init(self.new_conv[0], 0, 0.01, cfg.TRAIN.TRUNCATED)
 
     def create_architecture(self):

@@ -100,10 +100,10 @@ class _fasterRCNN(nn.Module):
         elif cfg.POOLING_MODE == 'pool':
             pooled_feat = self.RCNN_roi_pool(base_feat, rois.view(-1,5))
         elif cfg.POOLING_MODE == 'deform':
-            offset_t, _ = self.RCNN_deform_roi_pool_1(base_feat, rois.view(-1, 5))
+            offset_t = self.RCNN_deform_roi_pool_1(base_feat, rois.view(-1, 5))
             offset = self.deform_fc(offset_t.view(offset_t.size(0), -1))
             offset_reshape = offset.view(-1, 2, 7, 7)
-            pooled_feat, _ = self.RCNN_deform_roi_pool_2(base_feat, rois.view(-1, 5), offset_reshape)
+            pooled_feat = self.RCNN_deform_roi_pool_2(base_feat, rois.view(-1, 5), offset_reshape)
 
 
         # feed pooled features to top model
