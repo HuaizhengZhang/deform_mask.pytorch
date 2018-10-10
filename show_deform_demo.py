@@ -87,10 +87,10 @@ def parse_args():
                         default=0, type=int)
     parser.add_argument('--checksession', dest='checksession',
                         help='checksession to load model',
-                        default=830, type=int)
+                        default=831, type=int)
     parser.add_argument('--checkepoch', dest='checkepoch',
                         help='checkepoch to load network',
-                        default=1, type=int)
+                        default=9, type=int)
     parser.add_argument('--checkpoint', dest='checkpoint',
                         help='checkpoint to load network',
                         default=8274, type=int)

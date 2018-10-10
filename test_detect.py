@@ -56,7 +56,7 @@ def parse_args():
                         default='pascal_voc', type=str)
     parser.add_argument('--cfg', dest='cfg_file',
                         help='optional config file',
-                        default='cfgs/vgg16_deform.yml', type=str)
+                        default='cfgs/res101_deform.yml', type=str)
     parser.add_argument('--net', dest='net',
                         help='vgg16, res50, res101, res152',
                         default='vgg16_deform', type=str)
@@ -86,7 +86,7 @@ def parse_args():
                         default=1, type=int)
     parser.add_argument('--checkepoch', dest='checkepoch',
                         help='checkepoch to load network',
-                        default=1, type=int)
+                        default=9, type=int)
     parser.add_argument('--checkpoint', dest='checkpoint',
                         help='checkpoint to load network',
                         default=2504, type=int)
@@ -191,10 +191,10 @@ if __name__ == '__main__':
         gt_boxes = gt_boxes.cuda()
 
     # make variable
-    im_data = Variable(im_data, volatile=True)
-    im_info = Variable(im_info, volatile=True)
-    num_boxes = Variable(num_boxes, volatile=True)
-    gt_boxes = Variable(gt_boxes, volatile=True)
+    im_data = Variable(im_data)
+    im_info = Variable(im_info)
+    num_boxes = Variable(num_boxes)
+    gt_boxes = Variable(gt_boxes)
 
     if args.cuda:
         cfg.CUDA = True
@@ -243,7 +243,7 @@ if __name__ == '__main__':
         rois, cls_prob, bbox_pred, \
         rpn_loss_cls, rpn_loss_box, \
         RCNN_loss_cls, RCNN_loss_bbox, \
-        rois_label = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
+        rois_label, offset_reshape = fasterRCNN(im_data, im_info, gt_boxes, num_boxes)
 
         scores = cls_prob.data
         boxes = rois.data[:, :, 1:5]
@@ -268,7 +268,7 @@ if __name__ == '__main__':
             # Simply repeat the boxes, once for each class
             pred_boxes = np.tile(boxes, (1, scores.shape[1]))
 
-        pred_boxes /= data[1][0][2].cuda()
+        pred_boxes /= data[1][0][2].item()
 
         scores = scores.squeeze()
         pred_boxes = pred_boxes.squeeze()
