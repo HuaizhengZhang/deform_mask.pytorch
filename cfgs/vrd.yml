@@ -5,3 +5,7 @@ train:
 test:
     SCALES: [600,]
     MAX_SIZE: 1000
+
+learing_rate: 0.001
+epochs:
+optim:

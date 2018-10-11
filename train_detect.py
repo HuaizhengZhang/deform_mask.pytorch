@@ -47,7 +47,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train a Fast R-CNN network')
     parser.add_argument('--dataset', dest='dataset',
                         help='training dataset',
-                        default='pascal_voc', type=str)
+                        default='coco', type=str)
     parser.add_argument('--net', dest='net',
                         help='vgg16, res101',
                         default='res101_deform', type=str)
@@ -65,7 +65,7 @@ def parse_args():
                         default=10000, type=int)
 
     parser.add_argument('--save_dir', dest='save_dir',
-                        help='directory to save models', default="mocdels/detect",
+                        help='directory to save models', default="models/detect",
                         type=str)
     parser.add_argument('--nw', dest='num_workers',
                         help='number of worker to load data',

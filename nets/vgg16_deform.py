@@ -59,8 +59,6 @@ class vgg16(_fasterRCNN):
             nn.Dropout()
         )
 
-
-
         # not using the last maxpool layer
         self.RCNN_cls_score = nn.Linear(4096, self.n_classes)
 

@@ -8,6 +8,7 @@
 from PIL import Image
 import os
 import os.path as osp
+import pickle
 import numpy as np
 import numpy.random as npr
 import json
@@ -17,24 +18,18 @@ import torch.nn.functional as F
 import torch.utils.data as data
 import torchvision.transforms as transforms
 
-# from lib.rpn_msr.anchor_target_layer import anchor_target_layer
 
+class pre_VRD(object):
 
-class VRD(data.Dataset):
-    def __init__(self, opts, image_set='train', batch_size=1, dataset_option=None, use_region=False):
-        super(VRD, self).__init__()
+    def __init__(self, opts, image_set='train'):
+        super(pre_VRD, self).__init__()
         self._name = image_set
         self.opts = opts
-        self._batch_size = batch_size
         self._image_set = image_set
         self._data_path = osp.join(self.opts['dir'], 'sg_dataset', 'sg_{}_images'.format(image_set))
         # load category names and annotations
-        annotation_dir = osp.join(self.opts['dir'], 'Fnet')
-        inverse_weight = json.load(open(osp.join(annotation_dir, 'inverse_weight.json')))
+        annotation_dir = osp.join(self.opts['dir'], 'json_dataset')
 
-        self.inverse_weight_object = torch.FloatTensor(inverse_weight['object'])
-        self.inverse_weight_predicate = torch.FloatTensor(inverse_weight['predicate'])
-        # print self.inverse_weight_predicate
         ann_file_path = osp.join(annotation_dir, self.name + '.json')
         self.annotations = json.load(open(ann_file_path))
 
@@ -46,74 +41,41 @@ class VRD(data.Dataset):
         self._object_class_to_ind = dict(zip(self.object_classes, range(self.num_object_classes)))
         self._predicate_class_to_ind = dict(zip(self.predicate_classes, range(self.num_predicate_classes)))
 
-        # image transformation
-        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        self.transform = transforms.Compose([
-            transforms.ToTensor(),
-            normalize,
-        ])
-
         self.cfg_key = image_set.split('_')[0]
         self._feat_stride = None
         self._rpn_opts = None
 
-    def __getitem__(self, index):
-        # Sample random scales to use for each image in this batch
-        item = {}
+    def imdb(self, cache):
+        items = list()
+        for index in range(len(self.annotations)):
+            item = {}
+            target_scale = self.opts[self.cfg_key]['SCALES'][
+                npr.randint(0, high=len(self.opts[self.cfg_key]['SCALES']))]
+            item['target_scale'] = target_scale
+            img = cv2.imread(osp.join(self._data_path, self.annotations[index]['path']))
+            if img is None:
+                continue
 
-        target_scale = self.opts[self.cfg_key]['SCALES'][npr.randint(0, high=len(self.opts[self.cfg_key]['SCALES']))]
-        img = cv2.imread(osp.join(self._data_path, self.annotations[index]['path']))
-        img_original_shape = img.shape
-        item['path'] = self.annotations[index]['path']
-        img, im_scale = self._image_resize(img, target_scale, self.opts[self.cfg_key]['MAX_SIZE'])
-        # restore the [image_height, image_width, scale_factor, max_size]
-        item['image_info'] = np.array([img.shape[0], img.shape[1], im_scale,
-                                       img_original_shape[0], img_original_shape[1]], dtype=np.float)
-        item['visual'] = Image.fromarray(img)
+            item['path'] = self.annotations[index]['path']
+            item['max_size'] = self.opts[self.cfg_key]['MAX_SIZE']
 
-        if self.transform is not None:
-            item['visual'] = self.transform(item['visual'])
+            _annotation = self.annotations[index]
 
-        if self._batch_size > 1:
-            # padding the image to MAX_SIZE, so all images can be stacked
-            pad_h = self.opts[self.cfg_key]['MAX_SIZE'] - item['visual'].size(1)
-            pad_w = self.opts[self.cfg_key]['MAX_SIZE'] - item['visual'].size(2)
-            item['visual'] = F.pad(item['visual'], (0, pad_w, 0, pad_h)).data
+            gt_boxes_object = np.zeros((len(_annotation['objects']), 5))
+            gt_boxes_object[:, 0:4] = np.array([obj['bbox'] for obj in _annotation['objects']], dtype=np.float)
+            gt_boxes_object[:, 4] = np.array([obj['class'] for obj in _annotation['objects']])
+            item['gt_boxes'] = gt_boxes_object
 
-        _annotation = self.annotations[index]
-        gt_boxes_object = np.zeros((len(_annotation['objects']), 5))
-        gt_boxes_object[:, 0:4] = np.array([obj['bbox'] for obj in _annotation['objects']], dtype=np.float) * im_scale
-        gt_boxes_object[:, 4] = np.array([obj['class'] for obj in _annotation['objects']])
-        item['objects'] = gt_boxes_object
-
-
-        gt_relationships = np.zeros([len(_annotation['objects']), (len(_annotation['objects']))], dtype=np.long)
-        for rel in _annotation['relationships']:
-            gt_relationships[rel['sub_id'], rel['obj_id']] = rel['predicate']
-        item['relations'] = gt_relationships
-
-        return item
-
-    @staticmethod
-    def collate(items):
-        batch_item = {}
-        for key in items[0]:
-            if key == 'visual':
-                out = None
-                # If we're in a background process, concatenate directly into a
-                # shared memory tensor to avoid an extra copy
-                numel = sum([x[key].numel() for x in items])
-                storage = items[0][key].storage()._new_shared(numel)
-                out = items[0][key].new(storage)
-                batch_item[key] = torch.stack([x[key] for x in items], 0, out=out)
-
-            elif items[0][key] is not None:
-                batch_item[key] = [x[key] for x in items]
-
-        return batch_item
-
-    def __len__(self):
-        return len(self.annotations)
+            gt_relationships = np.zeros([len(_annotation['objects']), (len(_annotation['objects']))], dtype=np.long)
+            for rel in _annotation['relationships']:
+                gt_relationships[rel['sub_id'], rel['obj_id']] = rel['predicate']
+            item['relations'] = gt_relationships
+            items.append(item)
+        with open(cache, 'wb') as f:
+            pickle.dump(items, f)
+        print("================================================")
+        print("Finish get {} imdb".format(len(items)))
+        return items
 
     @property
     def voc_size(self):
@@ -137,6 +99,85 @@ class VRD(data.Dataset):
             'Path does not exist: {}'.format(image_path)
         return image_path
 
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def num_object_classes(self):
+        return len(self._object_classes)
+
+    @property
+    def num_predicate_classes(self):
+        return len(self._predicate_classes)
+
+    @property
+    def object_classes(self):
+        return self._object_classes
+
+    @property
+    def predicate_classes(self):
+        return self._predicate_classes
+
+
+class VRD(data.Dataset):
+    def __init__(self, opt, imdb, max_class, train_test):
+        super(VRD, self).__init__()
+        self.opts = opt
+        self.imdb = imdb
+        self.max_class = max_class
+
+        self._image_set = train_test
+        self._data_path = osp.join(self.opts['dir'], 'sg_dataset', 'sg_{}_images'.format(train_test))
+
+        # image transformation
+        normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        self.transform = transforms.Compose([
+            transforms.ToTensor(),
+            normalize,
+        ])
+
+        annotation_dir = osp.join(self.opts['dir'], 'json_dataset')
+
+        # categories
+        obj_cats = json.load(open(osp.join(annotation_dir, 'objects.json')))
+        self._object_classes = tuple(['__background__'] + obj_cats)
+        pred_cats = json.load(open(osp.join(annotation_dir, 'predicates.json')))
+        self._predicate_classes = tuple(['__background__'] + pred_cats)
+        self._object_class_to_ind = dict(zip(self.object_classes, range(self.num_object_classes)))
+        self._predicate_class_to_ind = dict(zip(self.predicate_classes, range(self.num_predicate_classes)))
+
+    def __len__(self):
+        return len(self.imdb)
+
+    def __getitem__(self, index):
+
+        target_scale = self.imdb[index]['target_scale']
+        img = cv2.imread(osp.join(self._data_path, self.imdb[index]['path']))
+
+        img, im_scale = self._image_resize(img, target_scale, self.imdb[index]['max_size'])
+
+        im_info = np.array([img.shape[0], img.shape[1], im_scale], dtype=np.float)
+        im_data = Image.fromarray(img)
+
+        if self.transform is not None:
+            im_data = self.transform(im_data)
+
+        self.imdb[index]['gt_boxes'][:, 0:4] = self.imdb[index]['gt_boxes'][:, 0:4] * im_scale
+
+        gt_boxes = self.imdb[index]['gt_boxes']
+        num_boxes = len(gt_boxes)
+
+        relations = self.imdb[index]['relations']
+
+        return im_data, im_info, gt_boxes, num_boxes, relations
+
+    @staticmethod
+    def collate(batch):
+        batch_item = {}
+
+        return batch_item
+
     def _image_resize(self, im, target_size, max_size):
         """Builds an input blob from the images in the roidb at the specified
         scales.
@@ -152,10 +193,6 @@ class VRD(data.Dataset):
                         interpolation=cv2.INTER_LINEAR)
 
         return im, im_scale
-
-    @property
-    def name(self):
-        return self._name
 
     @property
     def num_object_classes(self):
